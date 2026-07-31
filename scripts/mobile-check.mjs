@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'
 
-const routes = ['/', '/compass', '/goals', '/decide', '/reflect', '/trends']
+const routes = ['/', '/decide', '/reflect', '/foundations', '/inspiration']
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 })
 let problems = 0
