@@ -1,0 +1,28 @@
+# Logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# Environment
+.env
+.vercel
+
+# Personal data — the real content that seeds your database. Copy
+# scripts/seed-data.example.ts to scripts/seed-data.ts and edit it.
+scripts/seed-data.ts
+.compass-production.env
+
+# Internal working notes (not part of the shipped product)
+ROADMAP.md
+HANDOFF.md
