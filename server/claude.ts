@@ -1,6 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { USER_NAME } from './config.js'
 
+// AI features are optional: without a key the rest of the app still works and
+// the AI routes return a clear 503 instead of crashing (see requireAI in app.ts).
+export const AI_ENABLED = Boolean(process.env.ANTHROPIC_API_KEY)
+
 let _client: Anthropic | null = null
 function client(): Anthropic {
   if (_client) return _client

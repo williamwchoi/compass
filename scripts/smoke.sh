@@ -43,4 +43,9 @@ for ep in domains values pillars goals rules exercises strengths energy/profile;
   echo "  /api/$ep -> $n rows"
 done
 
+# No ANTHROPIC_API_KEY in the smoke env — AI routes must degrade to a clean 503.
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X POST "http://localhost:$PORT/api/intention")
+[[ "$code" == "503" ]] && echo "  /api/intention (no AI key) -> 503 as expected" \
+  || { echo "FAIL: /api/intention without key returned $code (want 503)"; FAIL=1; }
+
 [[ "$FAIL" == 0 ]] && echo "SMOKE PASS" || { echo "SMOKE FAIL"; exit 1; }

@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { execSync } from 'child_process'
 import { pool, HAS_COMMAND_CENTER } from './db.js'
-import { askJSON, type CompassContext } from './claude.js'
+import { askJSON, AI_ENABLED, type CompassContext } from './claude.js'
 import { USER_NAME } from './config.js'
 
 export const app = express()
@@ -150,8 +150,15 @@ function periodWindow(period: string): { start: string; end: string } {
 // ─── health ──────────────────────────────────────────────────────────
 app.get('/api/health', wrap(async (_req, res) => {
   await pool.query('SELECT 1')
-  res.json({ ok: true, gated: !!GATE, hasCommandCenter: HAS_COMMAND_CENTER, ts: new Date().toISOString() })
+  res.json({ ok: true, gated: !!GATE, ai: AI_ENABLED, hasCommandCenter: HAS_COMMAND_CENTER, ts: new Date().toISOString() })
 }))
+
+// AI-powered routes degrade gracefully: without an API key they return a clear
+// 503 (instead of a 500 crash) so the rest of the app stays fully usable.
+function requireAI(_req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (AI_ENABLED) return next()
+  res.status(503).json({ error: 'AI features are disabled on this instance. Set ANTHROPIC_API_KEY in .env to enable the intention, decide, and reflect generators.' })
+}
 
 // ─── generic CRUD factory for the simple tables ──────────────────────
 function crud(path: string, table: string, order: string) {
@@ -264,7 +271,7 @@ async function ensureDecisionFields() {
 app.use('/api/decide', (_req, _res, next) => { ensureDecisionFields().then(() => next()).catch(next) })
 app.use('/api/decisions', (_req, _res, next) => { ensureDecisionFields().then(() => next()).catch(next) })
 
-app.post('/api/decide', wrap(async (req, res) => {
+app.post('/api/decide', requireAI, wrap(async (req, res) => {
   const { question, options } = req.body as { question: string; options?: string[] }
   if (!question) return res.status(400).json({ error: 'question required' })
   const normalize = (value: string) => new Set(value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((word) => word.length > 2))
@@ -338,7 +345,7 @@ app.put('/api/intention', wrap(async (req, res) => {
   res.json(rows[0])
 }))
 
-app.post('/api/intention', wrap(async (_req, res) => {
+app.post('/api/intention', requireAI, wrap(async (_req, res) => {
   const ctx = await loadContext()
   const nextSteps = await openNextSteps()
   const work = HAS_COMMAND_CENTER ? await pullWork(periodWindow('daily').start, periodWindow('daily').end) : EMPTY_WORK
@@ -457,7 +464,7 @@ app.post('/api/energy', wrap(async (req, res) => {
 }))
 
 // ─── reflection ──────────────────────────────────────────────────────
-app.post('/api/reflect', wrap(async (req, res) => {
+app.post('/api/reflect', requireAI, wrap(async (req, res) => {
   const { period } = req.body as { period: 'daily' | 'weekly' | 'monthly' | 'quarterly' }
   const ctx = await loadContext()
   const { start, end } = periodWindow(period)
